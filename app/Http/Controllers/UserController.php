@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
+use Illuminate\Support\Facades\Hash;
+use Inertia\Inertia;
 
 class UserController extends Controller
 {
@@ -13,7 +16,11 @@ class UserController extends Controller
      */
     public function index()
     {
-        //
+        $users = User::paginate(10);
+
+        return inertia('User/Index', [
+            'users' => UserResource::collection($users)
+        ]);
     }
 
     /**
@@ -21,7 +28,7 @@ class UserController extends Controller
      */
     public function create()
     {
-        //
+        return inertia('User/Create');
     }
 
     /**
@@ -29,7 +36,11 @@ class UserController extends Controller
      */
     public function store(StoreUserRequest $request)
     {
-        //
+        $data = $request->validated();
+        $data['password'] = Hash::make($data['password']);
+        User::create($data);
+
+        return to_route('user.index')->with('success', 'User was created');
     }
 
     /**
@@ -37,7 +48,9 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
-        //
+        return inertia('User/Show', [
+            'user' => new UserResource($user)
+        ]);
     }
 
     /**
@@ -45,7 +58,9 @@ class UserController extends Controller
      */
     public function edit(User $user)
     {
-        //
+        return inertia('User/Edit', [
+            'user' => new UserResource($user)
+        ]);
     }
 
     /**
@@ -53,7 +68,16 @@ class UserController extends Controller
      */
     public function update(UpdateUserRequest $request, User $user)
     {
-        //
+        $data = $request->validated();
+        if (isset($data['password'])) {
+            $data['password'] = Hash::make($data['password']);
+        }
+        if ($data['password'] == null) {
+            unset($data['password']);
+        }
+        $user->update($data);
+
+        return to_route('user.index', $user)->with('success', "User: \"$user->name\" was updated");
     }
 
     /**
@@ -61,6 +85,9 @@ class UserController extends Controller
      */
     public function destroy(User $user)
     {
-        //
+        // $name = $user->getName();
+        $name = $user['name'];
+        $user->delete();
+        return to_route('user.index')->with('success', "User: \"$name\" deleted successfully");
     }
 }
